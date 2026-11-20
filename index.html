@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bütçem">
+<title>Bütçem — Kişisel Bütçe Takibi</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;
+  --income:#059669;--expense:#dc2626;--saving:#7c3aed;--radius:16px;
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:linear-gradient(135deg,#eef2ff 0%,#f0fdfa 50%,#fef2f2 100%);
+  color:var(--text);min-height:100vh;min-height:100dvh;
+  padding:16px;padding-top:max(16px,env(safe-area-inset-top));
+  padding-bottom:max(16px,env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:1080px;margin:0 auto}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-size:1.4rem;font-weight:800;letter-spacing:-.5px}
+.brand .dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.month-nav{display:flex;align-items:center;gap:4px;background:var(--card);padding:4px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.month-nav button{width:36px;height:36px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-size:1.2rem;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:.15s}
+.month-nav button:hover{background:#f1f5f9;color:var(--text)}
+.month-nav .label{min-width:130px;text-align:center;font-weight:600;font-size:.95rem;padding:0 6px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr);gap:10px}}
+.stat{background:var(--card);padding:14px 16px;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid var(--border)}
+.stat.income{border-left-color:var(--income)}
+.stat.expense{border-left-color:var(--expense)}
+.stat.net{border-left-color:#2563eb}
+.stat.saving{border-left-color:var(--saving)}
+.stat .label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px}
+.stat .value{font-size:1.2rem;font-weight:800;letter-spacing:-.3px}
+@media(max-width:480px){.stat .value{font-size:1.02rem}}
+
+/* Panel */
+.panel{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:16px}
+.panel-title{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:14px}
+.chart{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:90px 1fr 110px;gap:12px;align-items:center;font-size:.88rem}
+@media(max-width:480px){.bar-row{grid-template-columns:64px 1fr 80px;gap:8px;font-size:.8rem}}
+.bar-label{color:var(--muted);font-weight:600}
+.bar-track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:8px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.bar-fill.income{background:linear-gradient(90deg,#10b981,#059669)}
+.bar-fill.expense{background:linear-gradient(90deg,#f87171,#dc2626)}
+.bar-fill.saving{background:linear-gradient(90deg,#a78bfa,#7c3aed)}
+.bar-value{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* Progress */
+.progress-wrap{margin-top:18px}
+.progress-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.progress-head .pct{font-size:1.5rem;font-weight:800;letter-spacing:-.5px;color:var(--saving)}
+.progress-head .hint{font-size:.8rem;color:var(--muted)}
+.progress{height:10px;background:#f1f5f9;border-radius:99px;overflow:hidden}
+.progress>div{height:100%;background:linear-gradient(90deg,#a78bfa,#7c3aed);border-radius:99px;transition:width .5s}
+.progress-msg{margin-top:10px;font-size:.85rem;padding:8px 12px;border-radius:10px;font-weight:500}
+.progress-msg.ok{background:#ecfdf5;color:#065f46}
+.progress-msg.warn{background:#fef3c7;color:#92400e}
+.progress-msg.bad{background:#fee2e2;color:#991b1b}
+
+/* Sections */
+.sections{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.sections{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;flex-direction:column;min-height:280px}
+.card-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.card-head h2{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.card-head h2::before{content:'';width:10px;height:10px;border-radius:3px}
+.card.gelir .card-head h2::before{background:var(--income)}
+.card.gider .card-head h2::before{background:var(--expense)}
+.card.birikim .card-head h2::before{background:var(--saving)}
+.card-head .total{font-weight:800;font-size:1rem;font-variant-numeric:tabular-nums}
+.card.gelir .card-head .total{color:var(--income)}
+.card.gider .card-head .total{color:var(--expense)}
+.card.birikim .card-head .total{color:var(--saving)}
+.list{flex:1;overflow-y:auto;max-height:320px;margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+.empty{color:var(--muted);font-size:.85rem;text-align:center;padding:24px 0;font-style:italic}
+.item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-radius:10px;font-size:.88rem;transition:.15s}
+.item:hover{background:#f1f5f9}
+.item-info{display:flex;align-items:center;gap:6px;min-width:0;flex:1}
+.item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:.62rem;padding:2px 6px;border-radius:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.tag.sabit{background:#dbeafe;color:#1e40af}
+.tag.degisken{background:#fef3c7;color:#92400e}
+.item-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.item-amount{font-weight:700;font-variant-numeric:tabular-nums;font-size:.85rem}
+.del{width:24px;height:24px;border:none;background:transparent;color:#cbd5e1;cursor:pointer;border-radius:6px;font-size:.75rem;display:flex;align-items:center;justify-content:center;transition:.15s}
+.del:hover{background:#fee2e2;color:#dc2626}
+
+/* Form */
+form.add{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border)}
+form.add .row{display:flex;gap:8px}
+form.add input,form.add select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:var(--text);outline:none;transition:.15s}
+form.add input:focus,form.add select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+form.add input::placeholder{color:#94a3b8}
+form.add .row input{flex:1;min-width:0}
+form.add .row select{width:auto;flex-shrink:0;padding-right:8px}
+form.add button{padding:10px 16px;background:var(--text);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;transition:.15s;white-space:nowrap}
+form.add button:hover{opacity:.85}
+form.add button:active{transform:scale(.97)}
+.card.gelir form.add button{background:var(--income)}
+.card.gider form.add button{background:var(--expense)}
+.card.birikim form.add button{background:var(--saving)}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+
+/* Actions */
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:20px}
+.actions button{padding:10px 18px;background:#fff;border:1px solid var(--border);border-radius:10px;font-weight:600;font-size:.88rem;cursor:pointer;color:var(--text);transition:.15s}
+.actions button:hover{background:#f8fafc;border-color:#cbd5e1}
+.actions button.danger:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626}
+
+/* Tips */
+.tips{margin-top:20px;background:var(--card);border-radius:14px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06);font-size:.88rem}
+.tips summary{cursor:pointer;font-weight:700;list-style:none;outline:none}
+.tips summary::-webkit-details-marker{display:none}
+.tips summary::after{content:'▾';float:right;transition:.2s;color:var(--muted)}
+.tips[open] summary::after{transform:rotate(180deg)}
+.tips ul{margin:14px 0 0 18px;display:flex;flex-direction:column;gap:8px;color:var(--muted);line-height:1.55}
+.tips ul strong{color:var(--text)}
+
+/* Footnote */
+.footnote{text-align:center;color:var(--muted);font-size:.76rem;margin-top:16px;line-height:1.7;padding:0 8px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;bottom:max(24px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:11px 20px;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:#059669}
+.toast.err{background:#dc2626}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <div class="brand"><span class="dot"></span><h1>Bütçem</h1></div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)" aria-label="Önceki ay">‹</button>
+      <span class="label" id="monthLabel">—</span>
+      <button onclick="changeMonth(1)" aria-label="Sonraki ay">›</button>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="stat income"><div class="label">Toplam Gelir</div><div class="value" id="stat-gelir">₺0</div></div>
+    <div class="stat expense"><div class="label">Toplam Gider</div><div class="value" id="stat-gider">₺0</div></div>
+    <div class="stat net"><div class="label">Net Kalan</div><div class="value" id="stat-net">₺0</div></div>
+    <div class="stat saving"><div class="label">Birikim Oranı</div><div class="value" id="stat-oran">%0</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">Dağılım</div>
+    <div class="chart">
+      <div class="bar-row">
+        <span class="bar-label">Gelir</span>
+        <div class="bar-track"><div class="bar-fill income" id="bar-gelir" style="width:0%"></div></div>
+        <span class="bar-value" id="barval-gelir">₺0</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Gider</span>
+        <div class="bar-track"><div class="bar-fill expense" id="bar-gider" style="width:0%"></div></div>
+        <span class="bar-value" id="barval-gider">₺0</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Birikim</span>
+        <div class="bar-track"><div class="bar-fill saving" id="bar-birikim" style="width:0%"></div></div>
+        <span class="bar-value" id="barval-birikim">₺0</span>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-head">
+        <span class="hint">Hedef: gelirin %20'si</span>
+        <span class="pct" id="pct-label">%0</span>
+      </div>
+      <div class="progress"><div id="progress-bar" style="width:0%"></div></div>
+      <div class="progress-msg" id="progress-msg"></div>
+    </div>
+  </section>
+
+  <section class="sections">
+
+    <div class="card gelir">
+      <div class="card-head"><h2>Gelirler</h2><span class="total" id="gelir-total">₺0</span></div>
+      <div class="list" id="gelir-list"></div>
+      <form class="add" onsubmit="return addFromForm(event,'gelir')">
+        <input name="ad" placeholder="Örn: Maaş" required maxlength="40" autocomplete="off">
+        <div class="row">
+          <input name="tutar" type="number" step="0.01" min="0" placeholder="Tutar ₺" required inputmode="decimal">
+          <button type="submit">Ekle</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card gider">
+      <div class="card-head"><h2>Giderler</h2><span class="total" id="gider-total">₺0</span></div>
+      <div class="list" id="gider-list"></div>
+      <form class="add" onsubmit="return addFromForm(event,'gider')">
+        <input name="ad" placeholder="Örn: Kira" required maxlength="40" autocomplete="off">
+        <div class="row">
+          <input name="tutar" type="number" step="0.01" min="0" placeholder="Tutar ₺" required inputmode="decimal">
+          <select name="tip" aria-label="Tip">
+            <option value="sabit">Sabit</option>
+            <option value="degisken">Değişken</option>
+          </select>
+          <button type="submit">Ekle</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card birikim">
+      <div class="card-head"><h2>Birikim</h2><span class="total" id="birikim-total">₺0</span></div>
+      <div class="list" id="birikim-list"></div>
+      <form class="add" onsubmit="return addFromForm(event,'birikim')">
+        <input name="ad" placeholder="Örn: Acil durum fonu" required maxlength="40" autocomplete="off">
+        <div class="row">
+          <input name="tutar" type="number" step="0.01" min="0" placeholder="Tutar ₺" required inputmode="decimal">
+          <button type="submit">Ekle</button>
+        </div>
+      </form>
+    </div>
+
+  </section>
+
+  <div class="actions">
+    <button onclick="exportData()">⬇️ Yedekle (JSON)</button>
+    <button onclick="document.getElementById('importFile').click()">⬆️ Yedeği Yükle</button>
+    <button class="danger" onclick="resetMonth()">🗑️ Bu Ayı Sıfırla</button>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(event)">
+  </div>
+
+  <details class="tips">
+    <summary>💡 Bütçe İpuçları</summary>
+    <ul>
+      <li><strong>50/30/20 kuralı:</strong> %50 zorunlu gider, %30 istekler, %20 birikim.</li>
+      <li><strong>Önce biriktir:</strong> Gelir gelir gelmez birikimi ayır, kalanı harca.</li>
+      <li><strong>Zarf yöntemi:</strong> Her kategoriye nakit ayır, bitince dur.</li>
+      <li><strong>Acil durum fonu:</strong> 3–6 aylık gider kadar birikim yapmadan yatırıma girme.</li>
+      <li><strong>Haftalık kontrol:</strong> Her Pazar 10 dk kayıtları gözden geçir.</li>
+    </ul>
+  </details>
+
+  <p class="footnote">
+    Veriler bu cihazın tarayıcısında saklanır.<br>
+    Cihazlar arası senkron için "Yedekle" → diğer cihazda "Yedeği Yükle".
+  </p>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const KEY = 'butce_v1';
+const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+let state = { month: curMonth(), data: {} };
+
+function curMonth(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(m){
+  const [y, mo] = m.split('-').map(Number);
+  return MONTHS[mo-1] + ' ' + y;
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const p = JSON.parse(raw);
+      if(p && typeof p === 'object'){
+        state.month = p.month || curMonth();
+        state.data = p.data || {};
+      }
+    }
+  }catch(e){ console.warn(e); }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ console.warn(e); }
+}
+function mdata(){
+  if(!state.data[state.month]){
+    state.data[state.month] = { gelir:[], gider:[], birikim:[] };
+  }
+  const m = state.data[state.month];
+  m.gelir = m.gelir || [];
+  m.gider = m.gider || [];
+  m.birikim = m.birikim || [];
+  return m;
+}
+function sum(arr){ return arr.reduce((s,x) => s + (Number(x.tutar)||0), 0); }
+
+function fmt(n){
+  const v = Number(n) || 0;
+  return '₺' + v.toLocaleString('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function fmtShort(n){
+  const v = Number(n) || 0;
+  if(v >= 1e6) return '₺' + (v/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1}) + 'M';
+  if(v >= 1e4) return '₺' + (v/1e3).toLocaleString('tr-TR',{maximumFractionDigits:1}) + 'K';
+  return fmt(v);
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function toast(msg, type){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type || '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = 'toast'; }, 2200);
+}
+
+function setBar(id, val, max){
+  const w = max > 0 ? Math.round((val/max)*100) : 0;
+  document.getElementById('bar-'+id).style.width = w + '%';
+  document.getElementById('barval-'+id).textContent = fmtShort(val);
+}
+
+function renderSection(bolum, items){
+  const list = document.getElementById(bolum+'-list');
+  if(!items.length){
+    list.innerHTML = '<div class="empty">Henüz kayıt yok</div>';
+  } else {
+    list.innerHTML = items.map(it => {
+      const tipTag = it.tip ? `<span class="tag ${it.tip}">${it.tip === 'sabit' ? 'Sabit' : 'Değişken'}</span>` : '';
+      return `<div class="item">
+        <div class="item-info">
+          <span class="item-name" title="${escapeHtml(it.ad)}">${escapeHtml(it.ad)}</span>
+          ${tipTag}
+        </div>
+        <div class="item-right">
+          <span class="item-amount">${fmt(it.tutar)}</span>
+          <button class="del" onclick="delItem('${bolum}','${it.id}')" aria-label="Sil">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById(bolum+'-total').textContent = fmt(sum(items));
+}
+
+function render(){
+  document.getElementById('monthLabel').textContent = monthLabel(state.month);
+  const d = mdata();
+  const tGelir = sum(d.gelir);
+  const tGider = sum(d.gider);
+  const tBirikim = sum(d.birikim);
+  const net = tGelir - tGider;
+  const oran = tGelir > 0 ? (tBirikim / tGelir) * 100 : 0;
+
+  document.getElementById('stat-gelir').textContent = fmt(tGelir);
+  document.getElementById('stat-gider').textContent = fmt(tGider);
+  document.getElementById('stat-net').textContent = fmt(net);
+  document.getElementById('stat-oran').textContent = '%' + oran.toFixed(1);
+
+  const max = Math.max(tGelir, tGider, tBirikim, 1);
+  setBar('gelir', tGelir, max);
+  setBar('gider', tGider, max);
+  setBar('birikim', tBirikim, max);
+
+  document.getElementById('progress-bar').style.width = Math.min(100, oran) + '%';
+  document.getElementById('pct-label').textContent = '%' + oran.toFixed(1);
+
+  const msg = document.getElementById('progress-msg');
+  if(tGelir === 0){
+    msg.className = 'progress-msg warn';
+    msg.textContent = '💡 Önce gelirlerini ekle, sonra birikim oranını görelim.';
+  } else if(oran >= 20){
+    msg.className = 'progress-msg ok';
+    msg.textContent = `🎉 Harika! Hedefin üstündesin (+${(oran-20).toFixed(1)} puan).`;
+  } else if(oran >= 10){
+    msg.className = 'progress-msg warn';
+    msg.textContent = `⚠️ Hedefe ${(20-oran).toFixed(1)} puan kaldı. Biraz daha sıkı.`;
+  } else {
+    msg.className = 'progress-msg bad';
+    msg.textContent = '🚨 Birikim oranı düşük. Harcamaları gözden geçir.';
+  }
+
+  renderSection('gelir', d.gelir);
+  renderSection('gider', d.gider);
+  renderSection('birikim', d.birikim);
+}
+
+function addFromForm(e, bolum){
+  e.preventDefault();
+  const form = e.target;
+  const adEl = form.elements.namedItem('ad');
+  const tutarEl = form.elements.namedItem('tutar');
+  const tipEl = form.elements.namedItem('tip');
+  const ad = (adEl.value || '').trim();
+  const tutar = parseFloat(tutarEl.value);
+
+  if(!ad){ adEl.focus(); return false; }
+  if(!isFinite(tutar) || tutar <= 0){ tutarEl.focus(); return false; }
+
+  const item = { id: uid(), ad, tutar };
+  if(tipEl) item.tip = tipEl.value;
+
+  mdata()[bolum].push(item);
+  save(); render();
+  form.reset();
+  adEl.focus();
+  toast('✅ Eklendi: ' + ad, 'ok');
+  return false;
+}
+
+function delItem(bolum, id){
+  const arr = mdata()[bolum];
+  const i = arr.findIndex(x => String(x.id) === String(id));
+  if(i > -1){
+    arr.splice(i, 1);
+    save(); render();
+    toast('Silindi', 'ok');
+  }
+}
+
+function changeMonth(delta){
+  const [y, m] = state.month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  state.month = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  save(); render();
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'butce-yedek-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('💾 Yedek indirildi', 'ok');
+}
+
+function importData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!parsed || !parsed.data) throw new Error('Geçersiz format');
+      state = parsed;
+      if(!/^\d{4}-\d{2}$/.test(state.month || '')) state.month = curMonth();
+      if(!state.data) state.data = {};
+      save(); render();
+      toast('✅ Veriler yüklendi', 'ok');
+    }catch(err){
+      toast('❌ Hata: ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function resetMonth(){
+  if(!confirm(monthLabel(state.month) + ' ayının TÜM kayıtları silinsin mi?')) return;
+  state.data[state.month] = { gelir:[], gider:[], birikim:[] };
+  save(); render();
+  toast('🗑️ Ay sıfırlandı', 'ok');
+}
+
+// Başlat
+load();
+render();
+</script>
+</body>
+</html>
